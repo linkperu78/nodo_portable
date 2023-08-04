@@ -237,6 +237,7 @@ esp_err_t _http_event_handler(esp_http_client_event_t *evt)
             break;
         case HTTP_EVENT_ON_CONNECTED:
             ESP_LOGD(TAG, "HTTP_EVENT_ON_CONNECTED");
+            //led_set(CHECK, WHITE);
             break;
         case HTTP_EVENT_HEADER_SENT:
             ESP_LOGD(TAG, "HTTP_EVENT_HEADER_SENT");
@@ -318,6 +319,7 @@ static void http_get_data(char* url_path_get, char* local_response_buffer){
 
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "Failed to open HTTP connection: %s", esp_err_to_name(err));
+        led_set(WIFI, YELLOW);
         return;
     }
 
@@ -325,12 +327,14 @@ static void http_get_data(char* url_path_get, char* local_response_buffer){
     if (content_length < 0) {
         ESP_LOGE(TAG, "HTTP client fetch headers failed");
         esp_http_client_close(client);
+        led_set(WIFI, YELLOW);
         return;
     }
 
     if (content_length >= MAX_HTTP_OUTPUT_BUFFER) {
         ESP_LOGE(TAG, "Buffer size insufficent:\n - Needed = %d\n - Available = %d\n", content_length, MAX_HTTP_OUTPUT_BUFFER);
         esp_http_client_close(client);
+        led_set(WIFI, RED);
         return;
     }
 
@@ -338,6 +342,7 @@ static void http_get_data(char* url_path_get, char* local_response_buffer){
     if (data_read < 0 ){
         ESP_LOGE(TAG, "Failed to read response");
         esp_http_client_close(client);
+        led_set(WIFI, RED);
         return;
     }
 
@@ -346,6 +351,7 @@ static void http_get_data(char* url_path_get, char* local_response_buffer){
     if(get_response != 200){
         ESP_LOGE(TAG, "Fallo en el request GET(), HTTP Status = %d\n", get_response);
         esp_http_client_close(client);
+        led_set(WIFI, RED);
         return;
     }
 
@@ -354,6 +360,7 @@ static void http_get_data(char* url_path_get, char* local_response_buffer){
         esp_http_client_get_content_length(client));
 
     esp_http_client_close(client);
+    led_set(WIFI, GREEN);
     return;
 }
 
@@ -381,6 +388,7 @@ static int http_post_data(char* url_path_post, char* data_to_send, size_t data_t
     esp_err_t err_post = esp_http_client_open(client, data_to_send_size);
     if (err_post != ESP_OK) {
         ESP_LOGE(TAG, "Failed to open HTTP connection: %s", esp_err_to_name(err_post));
+        led_set(WIFI, RED);
         return -1;
     }
 
@@ -390,21 +398,24 @@ static int http_post_data(char* url_path_post, char* data_to_send, size_t data_t
     if (client_length_response < 0) {
         ESP_LOGE(TAG, "Failed writting data in endpoint\n");
         esp_http_client_cleanup(client);
+        led_set(WIFI, RED);
         return -1;
     }
 
     client_length_response = esp_http_client_read_response(client, response_buffer, response_size);
     if(client_length_response < 0){
         esp_http_client_cleanup(client);
+        led_set(WIFI, RED);
         return -1;
     }
     int status_code = esp_http_client_get_status_code(client);
     esp_http_client_cleanup(client);
     ESP_LOGI(TAG, "HTTP POST Status = %d\nRespuesta:\n%s\n", status_code, response_buffer);
     if(status_code != 200){
+        led_set(WIFI, RED);
         return -1;
     }
-
+    led_set(WIFI, BLUE);
     return 1;
 }
 
@@ -420,6 +431,7 @@ void app_main(void)
         ESP_ERROR_CHECK(nvs_flash_erase());
         ret = nvs_flash_init();
     }
+    config_pin();
     
     /* Desahibilitamos ciertos logs */
     esp_log_level_set("wifi_init", ESP_LOG_WARN);
@@ -430,22 +442,25 @@ void app_main(void)
     ESP_LOGI(TAG, "Inicializamos el programa prinicpal\n");
 
     /* Intentamos conectarnos a un ACCESS POINT y mostramos el IP obtenido */
+    led_set(WIFI, WHITE);  
     char ssid_buffer[32];
     wifi_scan(ssid_buffer, sizeof(ssid_buffer));
+
     printf("Best SSID: %s\n", ssid_buffer);
 
     if( strcmp(FAILED_WIFI_SCANNING , ssid_buffer) == 0){
         ESP_LOGE(TAG, "Finalizamos por no poder conectarse a una red Wifi \n");
+        led_set(WIFI, RED);
+        delay_ms(1500);
         sleep_ESP32(TIME_TO_SLEEP);
     }
 
     /* Configuramos los pines de la ESP32 */
     activate_pin(PinSD);
-    config_pin();
-
+    led_set(CHECK, BLUE);
     /* Creamos el buffer para HTTP Request */
     static char esp_http_buffer[MAX_HTTP_OUTPUT_BUFFER];
-    //static size_t buffer_size = sizeof(esp_http_buffer);
+    
 
     #define len_file_name  30
     char file_name[len_file_name] = "";
@@ -459,13 +474,18 @@ void app_main(void)
 
     if (ret_SD != ESP_OK) {
         ESP_LOGE(TAG, "TARJETA SD NO DETECTADA\n, se va a apagar el equipo\n");
-        return;
+        led_set(CHECK, RED);
+        delay_ms(1000);
+        sleep_ESP32(TIME_TO_SLEEP);
     }
-
+        led_set(CHECK, GREEN);
     // Una vez conectados, elegimos que operacion hacer segun el nombre del AP
      /*              WIFI = ESP-AP (EDGE_AP)         */
     if ( strcmp(EDGE_AP, ssid_buffer) == 0 ){
         printf(" \t FUNCION: Empezamos la extraccion de Datos \n");
+        led_set(WIFI, GREEN);
+
+        esp_err_t _reader_result;
 
         /* Datos de Salud */
         sprintf(url_to_get, "http://%s%s", edge_server, edge_salud_size); 
@@ -476,7 +496,12 @@ void app_main(void)
 
         // Lo almacenamos en un .txt file como cabecera
         sprintf(file_name, "%s.txt", file_salud_size);
-        guardar_file_sd(esp_http_buffer, file_name);
+        _reader_result = guardar_file_sd(esp_http_buffer, file_name);
+
+        if (_reader_result != ESP_OK){
+            ESP_LOGE(TAG, "No hay cantidad valida\n");
+            led_set(CHECK, RED);
+        }
 
         int intValue = atoi(esp_http_buffer);
 
@@ -484,9 +509,15 @@ void app_main(void)
         ESP_LOGI(TAG, "El servidor de datos = %s\n", url_to_get);
 
         for (int iteration = 0; iteration < intValue; iteration++){
+            led_set(CHECK, BLUE);
             http_get_data(url_to_get, esp_http_buffer);
             sprintf(file_name, "%s%d.txt", file_salud_data, iteration);
-            guardar_file_sd(esp_http_buffer, file_name);
+            _reader_result = guardar_file_sd(esp_http_buffer, file_name);
+            if(_reader_result == ESP_FAIL){
+                led_set(CHECK, RED);    
+                continue;
+            }
+            led_set(CHECK, GREEN);
         }
 
         /* Datos de Pesaje */
@@ -495,6 +526,7 @@ void app_main(void)
     /*              WIFI = WIFILOCAL  (MODEM_AP)         */
     else if ( strcmp(MODEM_AP, ssid_buffer) == 0 ){
         esp_log_level_set("HTTP_CLIENT", ESP_LOG_DEBUG);
+        led_set(WIFI, BLUE);
 
         /* Leemos la cantidad de archivos a leer de SALUD */
         sprintf(file_name, "%s.txt", file_salud_size);
@@ -515,8 +547,11 @@ void app_main(void)
             size_t length_sd = leer_file_sd(file_name, esp_http_buffer, MAX_HTTP_OUTPUT_BUFFER);
             if (length_sd == 0){
                 ESP_LOGE(TAG, "No hay data compatible con endpoint\n");
+                led_set(CHECK, RED);
                 continue;
             }
+
+            led_set(CHECK, BLUE);
 
             // CST Group endpoint POST() Request
             sprintf(url_to_get, "%s%s", cst_server, cst_salud); 
@@ -527,12 +562,16 @@ void app_main(void)
             sprintf(url_to_get, "%s%s", tpi_server, tpi_salud);
             result_post += http_post_data(url_to_get, esp_http_buffer, length_sd, http_post_response, http_post_size);
             ESP_LOGE(TAG, "Data result = %d\n", result_post);
+
             if(result_post == 2){
                 ESP_LOGI(TAG, "\t ------- Eliminando archivo ... \n");
+                led_set(CHECK, GREEN);
                 //delete_file_sd(file_name);
             }
         }
     }
+
+    log_free_space_esp32();
 
     // Desmomtamos la tarjeta SD ya que nos vamos a dormir
     ESP_LOGI(TAG, " - Ejectamos la tarjeta SD\n");
@@ -541,12 +580,13 @@ void app_main(void)
 
     ESP_LOGI(TAG, " - Apagamos las luces LED \n");
     power_off_leds();
+    delay_ms(500);
+
     ESP_LOGI(TAG, " - Apagamos el Modulo WIFI \n");
     ESP_ERROR_CHECK( esp_wifi_stop() );
-
-    //ESP_LOGI(TAG, "[APP] Free memory: %lu bytes", esp_get_free_heap_size());
 
     ESP_LOGI(TAG, " \n\t Comenzamos el deep_sleep \n");
     // Dormimos el equipo por 10 minutos
     sleep_ESP32(TIME_TO_SLEEP);
+
 }

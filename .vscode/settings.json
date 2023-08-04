@@ -1,7 +1,7 @@
 {
   "C_Cpp.intelliSenseEngine": "default",
   "idf.flashType": "UART",
-  "idf.portWin": "COM5",
+  "idf.portWin": "COM8",
   "idf.adapterTargetName": "esp32",
   "files.associations": {
     "freertos.h": "c",
@@ -34,6 +34,7 @@
     "stat.h": "c",
     "esp32_sd.h": "c",
     "esp_vfs_fat.h": "c",
-    "stdlib.h": "c"
+    "stdlib.h": "c",
+    "sdmmc_cmd.h": "c"
   }
 }

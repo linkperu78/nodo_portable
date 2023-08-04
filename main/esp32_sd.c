@@ -80,7 +80,7 @@ esp_err_t guardar_file_sd(char* buffer, char* name_file){
     FILE* f = fopen(new_file_name, "w");
     if (f == NULL) {
         ESP_LOGE(TAG_SD, "No se pudo escribir el archivo: %s\n", name_file);
-        return ESP_OK;
+        return ESP_FAIL;
     }
     fprintf(f, buffer);
     fclose(f);

@@ -56,6 +56,18 @@ enum _led{
 
 
 /**
+ * @brief This function introduces a delay of the desired duration in milliseconds.
+ * @param time_in_ms The time to wait in milliseconds.
+ */
+/**
+ * @note Example Usage:
+ * @code
+ * delay_ms(2570); // Delays execution for 2.57 seconds.
+ * @endcode
+ */
+void delay_ms(int time_in_ms);
+
+/**
  * @brief This functions turn on GPIO pin of ESP32
  * @param pin_number: GPIO pin number
  */
@@ -100,6 +112,12 @@ void led_set(enum _led pin_led, enum _color color);
  * @param _time_to_sleep: Duration of deep sleep for ESP32 in minutes
  */
 void sleep_ESP32(int _time_to_sleep);
+
+
+/**
+ * @brief This functions show the free space in bytes size and percentage
+ */
+void log_free_space_esp32();
 
 
 //--------------------------------------------------
