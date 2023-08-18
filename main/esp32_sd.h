@@ -9,6 +9,10 @@
 #include "freertos/task.h"
 #include "esp_system.h"
 #include "esp_log.h"
+#include "esp_event.h"
+#include "esp_wifi.h"
+#include <sys/unistd.h>
+#include <sys/stat.h>
 
 #include "nvs_flash.h"
 #include "esp_vfs_fat.h"
@@ -67,6 +71,11 @@ size_t leer_file_sd(const char *name_file, char* buffer_read, size_t size_buffer
  * @param name_file: const char pointer of the file name desired to delete
  */
 esp_err_t delete_file_sd(const char *name_file);
+
+bool file_exists(const char* file_path);
+esp_err_t update_battery_file(char* localtime, float battery_level);
+
+esp_err_t append_file_sd(char* buffer, char* name_file);
 
 
 // ----------------------------------------------------------------- //

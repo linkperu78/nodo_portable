@@ -80,7 +80,6 @@ void config_pin(){
   gpio_pullup_dis(ESP_LED_WIFI_B);
   gpio_pullup_dis(ESP_LED_WIFI_G);
 
-
   power_off_leds();
 }
 
@@ -89,7 +88,7 @@ void sleep_ESP32(int _time_to_sleep){
   gpio_deep_sleep_hold_en();
   esp_sleep_pd_config( ESP_PD_DOMAIN_RTC_SLOW_MEM, ESP_PD_OPTION_ON );
 
-  ESP_LOGI(TAG_ESP32, "El sistema entrara a deep sleep por %d minutos\n", _time_to_sleep);
+  ESP_LOGI("END PROCESS", "El sistema entrara a deep sleep por %d minutos\n", _time_to_sleep);
   uint64_t time_to_sleep = _time_to_sleep * MIN_TO_S * S_TO_US;
     
   esp_sleep_enable_timer_wakeup(time_to_sleep);
@@ -176,10 +175,50 @@ void led_set(enum _led pin_led, enum _color color){
 
 
 void log_free_space_esp32(){
-
   uint32_t free_heap_size = esp_get_free_heap_size();
   uint32_t total_heap_size = esp_get_minimum_free_heap_size() + free_heap_size;
   float percent_free = ((float)free_heap_size / total_heap_size) * 100.0;
-  ESP_LOGI(TAG_ESP32, "[APP] Free memory: %lu bytes (%.2f%% free)", free_heap_size, percent_free);
+  ESP_LOGI("DEBUG MODE", "[APP] Free memory: %lu bytes (%.2f%% free)", free_heap_size, percent_free);
+}
+
+
+void ADC_Channel_configure(int adc_channel){
+  ESP_ERROR_CHECK( adc1_config_width( ADC_WIDTH_BIT_DEFAULT ) );
+  ESP_ERROR_CHECK( adc1_config_channel_atten( adc_channel, ADC_ATTEN_DB_11 ) );
+}
+
+
+float adc_get_value(int adc_channel){
+  int value_bat   	= 0;
+  float repeat      = 8.0;
+  float _factor   	= 1;
+  float _offset   	= 0;
+
+	for(int i = 0; i < repeat; i++){
+        value_bat += adc1_get_raw(adc_channel);
+        vTaskDelay(200 / portTICK_PERIOD_MS);
+    }
+  float raw_volt = (float) value_bat/ repeat;
+  return (raw_volt*_factor + _offset)/100;
+}
+
+void print_bytes(const char* string_to_display, size_t size_string){
+  int i =0;
+  int breaked = 0;
+  ESP_LOGE("DEBUG MODE", "Testeando el mensaje:\n%s\n", string_to_display);
+  for(i = 0; i < size_string - 1 ; i++){
+    char actual_char = string_to_display[i];
+    if(actual_char == '\0'){
+      breaked = 1;
+      break;
+    }
+    printf("0x%02X-", (unsigned char) actual_char);
+  }
+  if(breaked == 1){
+    ESP_LOGE("DEBUG MODE", "El tamaño real del string es = %d characters\n", i);
+    return;
+  }
+  ESP_LOGI("DEBUG MODE", "El tamaño del string es = %d characters\n", size_string);
 
 }
+

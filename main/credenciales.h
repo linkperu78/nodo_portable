@@ -15,10 +15,12 @@
 #define edge_salud_size     "/salud/size"
 #define edge_pesaje_data    "/pesaje/datos"
 #define edge_pesaje_size    "/pesaje/size"
+#define edge_localtime      "/datetime"
+
 
 /* TPI ENDPOINTS */
 #define tpi_server          "https://qaomnicloud.ferreyros.net.pe/api/"
-#define tpi_pesjae          "OperacionesExternal"
+#define tpi_pesaje          "OperacionesExternal"
 #define tpi_salud           "OperacionesExternal/CargarAutomaticaSaludEquipos"
 #define tpi_key             "41FFC272-4960-484F-998F-CB981EE3E01B"
 #define tpi_format          "application/json"
@@ -26,5 +28,7 @@
 /* CST ENDPOINTS */
 #define cst_server          "http://20.206.129.111:1880/"
 #define cst_salud           "getdatos/dato"
+#define cst_bateria         "dispositivo/salud"
+#define cst_pesaje          "pesaje"
 
 #endif

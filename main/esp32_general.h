@@ -7,14 +7,20 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/time.h>
+
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "soc/soc_caps.h"
+#include "esp_log.h"
+
 #include "driver/gpio.h"
 #include "driver/uart.h"
 #include "esp_sleep.h"
+
 #include "driver/adc.h"
-#include "esp_adc_cal.h"
-#include "esp_log.h"
+//#include "esp_adc_cal.h"
+
+
 
 #define TIME_TO_SLEEP   10
 #define S_TO_US         1000000
@@ -30,10 +36,9 @@
 #define ESP_LED_CHECK_R     4
 #define ESP_LED_CHECK_G     2
 #define ESP_LED_CHECK_B     15
-#define BatPin              32
 #define PinSD               33
 
-static const char* TAG_ESP32 = "General_CST";
+#define BAT_ADC_CHANNEL     ADC1_CHANNEL_4
 
 // SALUD_MODE = 0, PESAJE_MODE = 1, 
 enum _mode{
@@ -115,10 +120,26 @@ void sleep_ESP32(int _time_to_sleep);
 
 
 /**
+ * @brief This function configures the ADC Channel of ESP32
+ * @param adc_channel : number of channel
+ */
+void ADC_Channel_configure(int adc_channel);
+
+
+/**
+ * @brief This function return the value of voltage of a ADC channel
+ * @param adc_channel : number of channel
+ */
+float adc_get_value(int adc_channel);
+
+
+/**
  * @brief This functions show the free space in bytes size and percentage
  */
 void log_free_space_esp32();
 
+
+void print_bytes(const char* string_to_display, size_t size_string);
 
 //--------------------------------------------------
 #endif /* __GENERAL_ESP32_ */

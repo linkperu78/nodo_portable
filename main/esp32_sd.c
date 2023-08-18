@@ -63,6 +63,7 @@ esp_err_t init_SD(sdmmc_card_t **out_card, sdmmc_host_t *out_host) {
     return ESP_OK;
 }
 
+
 void eject_SD(sdmmc_card_t *card, sdmmc_host_t *host) {
     const char mount_point[] = MOUNT_POINT;
 
@@ -73,6 +74,55 @@ void eject_SD(sdmmc_card_t *card, sdmmc_host_t *host) {
     // Get the host from the card and deinitialize the bus after all devices are removed
     spi_bus_free(host->slot);
 }
+
+bool file_exists(const char* file_path){
+    return (access(file_path, F_OK) == 0);
+}
+
+esp_err_t update_battery_file(char* localtime, float battery_level) {
+    // Nombre del archivo donde se va a guardar el nuevo dato
+    char new_file_name[30];
+    sprintf(new_file_name, "/sdcard/bateria.txt");
+    char battery_buffer[150];
+
+    // Le damos el formato para almacenarlo en bateria.txt
+    sprintf(battery_buffer, "{\"Valor\":\"%.2f\",\"Identificador\":\"Voltaje\",\"Fecha\":\"%s\"}",
+            battery_level, localtime);
+    ESP_LOGI("SD_CARD", "New batterry entry = %s\n", battery_buffer);
+
+    // Evaluamos la cantidad de datos en el contenido
+    if(file_exists(new_file_name)){
+        // File exists
+        FILE* f = fopen(new_file_name, "r+");
+        ESP_LOGI("SD_CARD", "Ingresando nuevo valor\n");
+        fseek(f, -2, SEEK_END);
+        ftruncate(fileno(f), ftell(f));
+        fprintf(f,",");
+        fprintf(f, "%s", battery_buffer);
+        fprintf(f,"]}");
+        fclose(f);
+    }
+    else{
+        uint8_t base_mac[6];
+        esp_wifi_get_mac(ESP_IF_WIFI_STA, base_mac);
+        char macId[20];
+        uint8_t index = 0;
+        for(uint8_t i=0; i<6; i++){
+            index += sprintf(&macId[index], "%02x", base_mac[i]);
+        }
+        int id_empresa = 1;
+        char cargadora[9] = "EQP44";
+        char prefix_battery_file[250];
+        sprintf(prefix_battery_file, "{\"idEmpresa\":%d,\"idDispositivo\":\"%s\",\"Cargadora\":\"%s\",\"registro\":[%s]}", 
+                id_empresa, macId, cargadora, battery_buffer);
+        ESP_LOGE("SD_CARD", "NEW FILE = %s\n", prefix_battery_file);
+        FILE* f = fopen(new_file_name, "a");
+        fprintf(f, "%s", prefix_battery_file);
+        fclose(f);
+    }
+    return ESP_OK;
+}
+
 
 esp_err_t guardar_file_sd(char* buffer, char* name_file){
     char new_file_name[30];
@@ -87,6 +137,22 @@ esp_err_t guardar_file_sd(char* buffer, char* name_file){
     ESP_LOGI(TAG_SD, "Se escribio en el archivo: %s\n", name_file);
     return ESP_OK;
 }
+
+
+esp_err_t append_file_sd(char* buffer, char* name_file){
+    char new_file_name[30];
+    sprintf(new_file_name, "%s%s", MOUNT_POINT, name_file);
+    FILE* f = fopen(new_file_name, "a"); // Open in append mode ("a")
+    if (f == NULL) {
+        ESP_LOGE(TAG_SD, "No se pudo escribir el archivo: %s\n", name_file);
+        return ESP_FAIL;
+    }
+    fprintf(f, "%s", buffer); // Write the buffer contents
+    fclose(f);
+    ESP_LOGI(TAG_SD, "Se agrego la data %s en el archivo: %s\n",buffer, name_file);
+    return ESP_OK;
+}
+
 
 size_t leer_file_sd(const char *name_file, char* buffer_read, size_t size_buffer)
 {
@@ -122,13 +188,9 @@ size_t leer_file_sd(const char *name_file, char* buffer_read, size_t size_buffer
         return 0;
     }
 
-    if (bytes_read > 0) {
-        buffer_read[bytes_read] = '\0';
-    }
-
-    bytes_read--;
     return bytes_read;
 }
+
 
 esp_err_t delete_file_sd(const char *name_file) {
     char file_path[50];
