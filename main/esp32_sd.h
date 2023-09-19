@@ -25,9 +25,13 @@
 #define PIN_SD_MOSI         23
 #define PIN_SD_CLK          18
 #define PIN_SD_CS           5
+
 #define MOUNT_POINT         "/sdcard"
+
 #define file_salud_size     "/salud"
 #define file_salud_data     "/sa_"
+#define file_err_salud_size "/err_salud"
+#define file_err_salud_dat  "/err_sa_"
 #define file_pesaje_size    "/pesaje"
 #define file_pesaje_data    "/pe_"
 
@@ -77,6 +81,7 @@ esp_err_t update_battery_file(char* localtime, float battery_level);
 
 esp_err_t append_file_sd(char* buffer, char* name_file);
 
+esp_err_t create_file(const char *name_file);
 
 // ----------------------------------------------------------------- //
 #endif /* __SD_ESP32_ */

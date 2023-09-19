@@ -10,7 +10,7 @@ esp_err_t init_SD(sdmmc_card_t **out_card, sdmmc_host_t *out_host) {
         .format_if_mount_failed = false,
 #endif // EXAMPLE_FORMAT_IF_MOUNT_FAILED
         .max_files = 10,
-        .allocation_unit_size = 16 * 1024
+        .allocation_unit_size = 8 * 1024
     };
     sdmmc_card_t *card;
     const char mount_point[] = MOUNT_POINT;
@@ -20,14 +20,15 @@ esp_err_t init_SD(sdmmc_card_t **out_card, sdmmc_host_t *out_host) {
     sdmmc_host_t host = SDSPI_HOST_DEFAULT();
     *out_host = host;
     host.max_freq_khz = 5000;   // Default freqz = 20 MHz (this value causes an issues with SD detector)
-    
+    //host.max_freq_khz = 10000;
+
     spi_bus_config_t bus_cfg = {
         .mosi_io_num = PIN_SD_MOSI,
         .miso_io_num = PIN_SD_MISO,
         .sclk_io_num = PIN_SD_CLK,
         .quadwp_io_num = -1,
         .quadhd_io_num = -1,
-        .max_transfer_sz = 4000,
+        .max_transfer_sz = 4092,
     };
     ret_sd = spi_bus_initialize(host.slot, &bus_cfg, SDSPI_DEFAULT_DMA);
     if (ret_sd != ESP_OK) {
@@ -125,7 +126,7 @@ esp_err_t update_battery_file(char* localtime, float battery_level) {
 
 
 esp_err_t guardar_file_sd(char* buffer, char* name_file){
-    char new_file_name[30];
+    char new_file_name[50];
     sprintf(new_file_name, "%s%s",MOUNT_POINT, name_file);
     FILE* f = fopen(new_file_name, "w");
     if (f == NULL) {
@@ -140,7 +141,7 @@ esp_err_t guardar_file_sd(char* buffer, char* name_file){
 
 
 esp_err_t append_file_sd(char* buffer, char* name_file){
-    char new_file_name[30];
+    char new_file_name[50];
     sprintf(new_file_name, "%s%s", MOUNT_POINT, name_file);
     FILE* f = fopen(new_file_name, "a"); // Open in append mode ("a")
     if (f == NULL) {
@@ -156,13 +157,14 @@ esp_err_t append_file_sd(char* buffer, char* name_file){
 
 size_t leer_file_sd(const char *name_file, char* buffer_read, size_t size_buffer)
 {
-    char new_file_name[30];
+    char new_file_name[50];
     sprintf(new_file_name, "%s%s",MOUNT_POINT, name_file);
 
     ESP_LOGI(TAG_SD, "Reading file %s", name_file);
     FILE* f = fopen(new_file_name, "r");
     if (f == NULL) {
         ESP_LOGE(TAG_SD, "No se pudo abrir el archivo para lectura: %s", name_file);
+        sprintf(buffer_read, "%d",0);
         return 0;
     }
 
@@ -208,3 +210,17 @@ esp_err_t delete_file_sd(const char *name_file) {
 }
 
 
+esp_err_t create_file(const char *name_file){
+    char file_path[50];
+    sprintf(file_path, "%s%s", MOUNT_POINT, name_file);
+
+    ESP_LOGE("SD_CARD", "Creating the folder: %s\n", name_file);
+    FILE* f = fopen(name_file, "w");
+    if (f == NULL) {
+        ESP_LOGE(TAG_SD, "No se pudo crear \n");
+        return ESP_FAIL;
+    }
+    fprintf(f, "%s", "0");
+    fclose(f);
+    return ESP_OK;
+}

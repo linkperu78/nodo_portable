@@ -191,15 +191,15 @@ void ADC_Channel_configure(int adc_channel){
 float adc_get_value(int adc_channel){
   int value_bat   	= 0;
   float repeat      = 8.0;
-  float _factor   	= 1;
+  float _factor   	= 1.6;
   float _offset   	= 0;
 
 	for(int i = 0; i < repeat; i++){
         value_bat += adc1_get_raw(adc_channel);
-        vTaskDelay(200 / portTICK_PERIOD_MS);
-    }
+        vTaskDelay(50 / portTICK_PERIOD_MS);
+  }
   float raw_volt = (float) value_bat/ repeat;
-  return (raw_volt*_factor + _offset)/100;
+  return (raw_volt*_factor + _offset) / 620.61;
 }
 
 void print_bytes(const char* string_to_display, size_t size_string){

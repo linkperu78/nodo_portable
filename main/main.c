@@ -429,28 +429,40 @@ static int http_post_data(  char* url_path_post, char* data_to_send, size_t data
 }
 
 /*      GET SIZE OF PACKAGE OF DATA SALUD OR PESAJE     */
-static void save_and_get_size_in_file(char* url_to_get, char* esp_http_buffer, char* file_name){
+static int save_and_get_size_in_file(char* url_to_get, char* esp_http_buffer, char* file_name){
     ESP_LOGI(TAG, "El servidor de size = %s\n", url_to_get);
-
+    // Chequeamos cuantos paquetes vamos almacenando
+    leer_file_sd(file_name, esp_http_buffer, MAX_HTTP_OUTPUT_BUFFER);
+    int current_qty_files = atoi(esp_http_buffer);
+    
     // Obtenemos el numero de paquetes
     // esp_http_buffer will store the response of the url_to_get
+    
     http_get_data(url_to_get, esp_http_buffer, MAX_HTTP_OUTPUT_BUFFER);
+    //sprintf(esp_http_buffer,"%d",2);
+    
+    
+    int new_qty_files = atoi(esp_http_buffer);
+
+    char total_qty_files[5];
+    sprintf(total_qty_files, "%d", new_qty_files + current_qty_files);
 
     esp_err_t _reader_result;
-    _reader_result = guardar_file_sd(esp_http_buffer, file_name);
+    _reader_result = guardar_file_sd(total_qty_files, file_name);
 
     if (_reader_result != ESP_OK){
         ESP_LOGE(TAG, "No hay cantidad valida\n");
         led_set(CHECK, RED);
     }
+    return current_qty_files;
 }
 
 static void save_package_data_in_file(  char* file_name_buffer, char* file_name_prefix, char* esp_http_buffer, 
-                                        char* url_to_get, int file_qty){
+                                        char* url_to_get, int start_qty, int qty){
     ESP_LOGI(TAG, "- El servidor de datos = %s\n", url_to_get);
-    ESP_LOGI(TAG, "- Numero de paquetes a extraer = %d\n", file_qty);
-
-    for (int iteration = 0; iteration < file_qty; iteration++){
+    ESP_LOGI(TAG, "- Numero de paquetes a extraer = %d\n", qty);
+    int new_total = qty + start_qty;
+    for (int iteration = start_qty; iteration < new_total; iteration++){
         led_set(CHECK, BLUE);
         http_get_data(url_to_get, esp_http_buffer, MAX_HTTP_OUTPUT_BUFFER);
         sprintf(file_name_buffer, "%s%d.txt", file_name_prefix, iteration);
@@ -539,52 +551,101 @@ void app_main(void)
         ESP_LOGI(TAG, "Valor leido de bateria = %.2f\n", battery_level);
         sprintf(url_to_get, "http://%s%s", edge_server, edge_localtime);
 
+        if (battery_level > 4.0){
+            led_set(BAT, BLUE);
+        }
+        else{
+            if ( battery_level > 3.75 ) {
+                led_set(BAT, GREEN);
+            }
+            else {
+                led_set(BAT, RED);
+            }
+        }
+
         static char localtime_buffer[60];
         http_get_data(url_to_get, localtime_buffer, 60);
         update_battery_file(localtime_buffer, battery_level);
 
-
         // ----------------- Datos de Salud ---------------------- 
         sprintf(url_to_get, "http://%s%s", edge_server, edge_salud_size);
+
         // Lo almacenamos en un .txt file como cabecera
         sprintf(file_name_buffer, "%s.txt", file_salud_size); 
-        save_and_get_size_in_file(url_to_get, esp_http_buffer, file_name_buffer);
-        int intValue = atoi(esp_http_buffer);
+        int start_qty = save_and_get_size_in_file(url_to_get, esp_http_buffer, file_name_buffer);
+        int end_qty = atoi(esp_http_buffer);
         sprintf(url_to_get, "http://%s%s", edge_server, edge_salud_data); 
-        save_package_data_in_file(file_name_buffer, file_salud_data, esp_http_buffer, url_to_get, intValue);
-
-        // -------------- Datos de Pesaje
-        sprintf(url_to_get, "http://%s%s", edge_server, edge_pesaje_size); 
-        // Lo almacenamos en un .txt file como cabecera
-        sprintf(file_name_buffer, "%s.txt", file_pesaje_size); 
-        save_and_get_size_in_file(url_to_get, esp_http_buffer, file_name_buffer);
-        intValue = atoi(esp_http_buffer);
-        sprintf(url_to_get, "http://%s%s", edge_server, edge_pesaje_data); 
-        save_package_data_in_file(file_name_buffer, file_pesaje_data, esp_http_buffer, url_to_get, intValue);
-
+        save_package_data_in_file(file_name_buffer, file_salud_data, esp_http_buffer, url_to_get, start_qty, end_qty);
 
     }
     /*              WIFI = WIFILOCAL  (MODEM_AP)         */
     else if ( strcmp(MODEM_AP, ssid_buffer) == 0 ){
         char http_post_response[http_post_size];
         int result_post = 0;
-        esp_log_level_set("HTTP_CLIENT", ESP_LOG_DEBUG);
+        size_t length_sd = 0;
+        esp_log_level_set("HTTP_CLIENT", ESP_LOG_WARN);
         led_set(WIFI, BLUE);
 
-        // Leemos la cantidad de archivos a leer de SALUD
+        //  ---------------  SALUD NO ENVIADOS  ---------------------
+        // Leemos la cantidad de archivos no enviados
+        int counter_no_env = 0;
+        int new_counter_no_env = 0;
+        char valor_file[4];
+        sprintf(file_name_buffer, "%s.txt", file_err_salud_size);
+
+        int status = leer_file_sd(file_name_buffer, esp_http_buffer, MAX_HTTP_OUTPUT_BUFFER);
+        if (status == 0){
+            create_file(file_name_buffer);
+        }
+        else{
+            counter_no_env = atoi(esp_http_buffer);
+        }
+
+        // Intentamos enviar los datos no enviados, en caso contrario, 
+        // se vuelven a grabar como datos no enviados
+        ESP_LOGI(TAG, "NO ENVIADOS: Se enviaran %d paquetes", counter_no_env);
+        
+        for (int iterator = 0; iterator < counter_no_env; iterator++){
+            result_post = 0;
+            sprintf(file_name_buffer, "%s%d.txt", file_err_salud_dat, iterator);
+            led_set(CHECK, BLUE);
+            length_sd = leer_file_sd(file_name_buffer, esp_http_buffer, MAX_HTTP_OUTPUT_BUFFER);
+
+            sprintf(url_to_get, "%s%s", cst_server, cst_salud); 
+            http_post_data(url_to_get, esp_http_buffer, length_sd, http_post_response, http_post_size);
+
+            sprintf(url_to_get, "%s%s", tpi_server, tpi_salud);
+            result_post += http_post_data(url_to_get, esp_http_buffer, length_sd, http_post_response, http_post_size);
+            
+            delete_file_sd(file_name_buffer);
+            if( result_post == 0){
+                sprintf(file_name_buffer, "%s%d.txt", file_err_salud_dat, new_counter_no_env);
+                guardar_file_sd(esp_http_buffer, file_name_buffer);
+                led_set(CHECK, RED);
+                new_counter_no_env++;
+            }
+            else {
+                led_set(CHECK, GREEN);
+            }
+        }
+
+        //  ---------------  SALUD ENVIADOS  ---------------------
+        // Leemos la cantidad de archivos a enviar
         sprintf(file_name_buffer, "%s.txt", file_salud_size);
         leer_file_sd(file_name_buffer, esp_http_buffer, MAX_HTTP_OUTPUT_BUFFER);
 
         number_packages = atoi(esp_http_buffer);
         ESP_LOGI(TAG, "Archivo SALUD: Se enviaran %d paquetes de datos", number_packages);
         //number_packages = 1; // only for testing 
+
         for(int iterator = 0; iterator < number_packages; iterator++){
             sprintf(file_name_buffer, "%s%d.txt", file_salud_data, iterator);
             result_post = 0;
             // Obtenemos el los datos almacenados en la SD
-            size_t length_sd = leer_file_sd(file_name_buffer, esp_http_buffer, MAX_HTTP_OUTPUT_BUFFER);
+            length_sd = leer_file_sd(file_name_buffer, esp_http_buffer, MAX_HTTP_OUTPUT_BUFFER);
             if (length_sd == 0){
                 ESP_LOGE(TAG, "No hay data compatible con endpoint\n");
+                delete_file_sd(file_name_buffer);
                 led_set(CHECK, RED);
                 continue;
             }
@@ -593,60 +654,47 @@ void app_main(void)
 
             // CST Group endpoint POST() Request
             sprintf(url_to_get, "%s%s", cst_server, cst_salud); 
-            result_post += http_post_data(url_to_get, esp_http_buffer, length_sd, http_post_response, http_post_size);
+            http_post_data(url_to_get, esp_http_buffer, length_sd, http_post_response, http_post_size);
             
             // OMNICLOUD endpoint POST() Request
             sprintf(url_to_get, "%s%s", tpi_server, tpi_salud);
             result_post += http_post_data(url_to_get, esp_http_buffer, length_sd, http_post_response, http_post_size);
             
-            if(result_post == 2){
-                ESP_LOGI(TAG, "\t ------- Eliminando archivo ... \n");
+            delete_file_sd(file_name_buffer);
+
+            // Si enviamos exitosamente, pasamos al siguiente
+            if(result_post == 1){
+                ESP_LOGI(TAG, "Se envio exitosamente el archivo: %s \n", file_name_buffer);
                 led_set(CHECK, GREEN);
-                delete_file_sd(file_name_buffer);
             }
-        }
-
-        /* Leemos la cantidad de archivos a enviar de PESAJE */
-        sprintf(file_name_buffer, "%s.txt", file_pesaje_size);
-        leer_file_sd(file_name_buffer, esp_http_buffer, MAX_HTTP_OUTPUT_BUFFER);
-
-        number_packages = atoi(esp_http_buffer);
-        ESP_LOGI(TAG, "Archivo PESAJE: Se enviaran %d paquetes de datos", number_packages);
-        //number_packages = 1; // only for testing 
-        for(int iterator = 0; iterator < number_packages; iterator++){
-            sprintf(file_name_buffer, "%s%d.txt", file_pesaje_data, iterator);
-            result_post = 0;
-            // Obtenemos el los datos almacenados en la SD
-            size_t length_sd = leer_file_sd(file_name_buffer, esp_http_buffer, MAX_HTTP_OUTPUT_BUFFER);
-            if (length_sd == 0){
-                ESP_LOGE(TAG, "No hay data compatible con endpoint\n");
+            // Caso contrario, lo guardamos como no enviados
+            else{
+                ESP_LOGE(TAG, "Fallo al enviar el archivo: %s \n", file_name_buffer);
                 led_set(CHECK, RED);
-                continue;
-            }
-
-            led_set(CHECK, BLUE);
-
-            // CST Group endpoint POST() Request
-            sprintf(url_to_get, "%s%s", cst_server, cst_pesaje); 
-            result_post += http_post_data(url_to_get, esp_http_buffer, length_sd, http_post_response, http_post_size);
-            ESP_LOGE(TAG, "Data result = %d\n", result_post);
-
-            // OMNICLOUD endpoint POST() Request
-            sprintf(url_to_get, "%s%s", tpi_server, tpi_pesaje);
-            result_post += http_post_data(url_to_get, esp_http_buffer, length_sd, http_post_response, http_post_size);
-            ESP_LOGE(TAG, "Data result = %d\n", result_post);
-
-            if(result_post == 2){
-                ESP_LOGI(TAG, "\t ------- Eliminando archivo ... \n");
-                led_set(CHECK, GREEN);
-                delete_file_sd(file_name_buffer);
+                // Se guarda el valor no enviado
+                sprintf(file_name_buffer, "%s%d.txt", file_salud_data, new_counter_no_env);
+                new_counter_no_env++;
+                guardar_file_sd(esp_http_buffer, file_name_buffer);
             }
         }
 
+        // Seteamos el valor de los datos a enviar a cero
+        sprintf(file_name_buffer, "%s.txt", file_salud_size);
+        guardar_file_sd("0", file_name_buffer);
+
+        // Actualizamos el valor de los datos no enviados
+        sprintf(file_name_buffer, "%s.txt", file_err_salud_size);
+        if (new_counter_no_env == 0){
+            create_file(file_name_buffer);
+        }
+        else{
+            sprintf(http_post_response, "%d", new_counter_no_env);
+            guardar_file_sd(http_post_response, file_name_buffer);
+        }
 
         /* Leemos la cantidad de archivos a enviar de BATERIA */
         sprintf(file_name_buffer, "%s.txt", "/bateria");
-        size_t length_sd = leer_file_sd(file_name_buffer, esp_http_buffer, MAX_HTTP_OUTPUT_BUFFER);
+        length_sd = leer_file_sd(file_name_buffer, esp_http_buffer, MAX_HTTP_OUTPUT_BUFFER);
         if (length_sd == 0){
             ESP_LOGE(TAG, "No hay data compatible con endpoint\n");
             led_set(CHECK, RED);
@@ -662,19 +710,19 @@ void app_main(void)
         }
     }
 
-    log_free_space_esp32();
-
-    // Desmomtamos la tarjeta SD ya que nos vamos a dormir
-    ESP_LOGI(TAG, " - Ejectamos la tarjeta SD\n");
-    deactivate_pin(PinSD);
-    eject_SD(card, &host);
-
-    ESP_LOGI(TAG, " - Apagamos las luces LED \n");
-    power_off_leds();
-    delay_ms(500);
+    //leer_file_sd("hola_mundo.txt", esp_http_buffer, MAX_HTTP_OUTPUT_BUFFER);
 
     ESP_LOGI(TAG, " - Apagamos el Modulo WIFI \n");
     ESP_ERROR_CHECK( esp_wifi_stop() );
+
+    ESP_LOGI(TAG, " - Ejectamos la tarjeta SD\n");
+    eject_SD(card, &host);
+    deactivate_pin(PinSD);
+
+    log_free_space_esp32();
+    ESP_LOGI(TAG, " - Apagamos las luces LED \n");
+    power_off_leds();
+    delay_ms(500);
 
     ESP_LOGI(TAG, " \n\t Comenzamos el deep_sleep \n");
     // Dormimos el equipo por 10 minutos
