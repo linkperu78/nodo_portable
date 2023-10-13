@@ -37,27 +37,37 @@
 
 static const char* TAG_SD = "SD_CST";
 
-/**
- * @brief This function init SD communication
- * @param out_card: sdmmc_card_t pointer of the pointer
- * @param out_host: sdmmc_host_t pointer
- */
+/*
+   Description:
+   This function make available the read and write operations with the SD Card
+
+   Returns:
+   esp_err_t response = ESP_OK or ESP_FAIL
+*/
 esp_err_t init_SD(sdmmc_card_t **out_card, sdmmc_host_t *out_host);
 
 
-/**
- * @brief This function eject a SD Card and close its communication
- * @param out_card: sdmmc_card_t pointer of the pointer
- * @param out_host: sdmmc_host_t pointer
- */
+/*
+   Description:
+   This function close communication with the SD Card
+
+   Returns:
+   Nothing
+*/
 void eject_SD(sdmmc_card_t *card, sdmmc_host_t *host);
 
 
-/**
- * @brief This function storage data into a file in SD CARD
- * @param buffer: char pointer of the buffer where it will store the data to storage
- * @param name_file: char pointer of the name file desired
- */
+/*
+   Description:
+   This function close communication with the SD Card
+
+   Parameters:
+   char* buffer : The content to storage
+   char* name_file: The name of the file for that content
+
+   Returns:
+   esp_err_t response = ESP_OK or ESP_FAIL
+*/
 esp_err_t guardar_file_sd(char* buffer, char* name_file);
 
 

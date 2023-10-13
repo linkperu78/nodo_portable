@@ -14,10 +14,6 @@
 #include "esp32_general.h"
 #include "esp32_sd.h"
 
-#include <string.h>
-#include <stdlib.h>
-#include <time.h>
-#include <ctype.h>
 #include <sys/param.h>
 #include <sys/unistd.h>
 #include <sys/stat.h>
@@ -29,15 +25,11 @@
 #include "esp_wifi.h"
 #include "esp_event.h"
 #include "esp_netif.h"
-#include "esp_log.h"
 
-#include "nvs_flash.h"
+
 #include "esp_vfs_fat.h"
 #include "sdmmc_cmd.h"
-#include "lwip/err.h"
-#include "lwip/sys.h"
 
-#include "esp_tls.h"
 #if CONFIG_MBEDTLS_CERTIFICATE_BUNDLE
 #include "esp_crt_bundle.h"
 #endif
@@ -315,7 +307,7 @@ static void http_get_data(char* url_path_get, char* response_buffer, size_t size
     esp_http_client_config_t config = {
         .url = url_path_get,
         .timeout_ms = 5000,
-        .event_handler = _http_event_handler,
+        //.event_handler = _http_event_handler,
     };
     esp_http_client_handle_t client = esp_http_client_init(&config);
 
@@ -380,7 +372,7 @@ static int http_post_data(  char* url_path_post, char* data_to_send, size_t data
     esp_http_client_config_t config = {
         .url                = url_path_post,
         .timeout_ms         = 10000,
-        .event_handler      = _http_event_handler,
+        //.event_handler      = _http_event_handler,
         .crt_bundle_attach  = esp_crt_bundle_attach,
     };
     ESP_LOGI(TAG, "Clear the response buffer 101\n");
@@ -437,11 +429,8 @@ static int save_and_get_size_in_file(char* url_to_get, char* esp_http_buffer, ch
     
     // Obtenemos el numero de paquetes
     // esp_http_buffer will store the response of the url_to_get
-    
-    http_get_data(url_to_get, esp_http_buffer, MAX_HTTP_OUTPUT_BUFFER);
     //sprintf(esp_http_buffer,"%d",2);
-    
-    
+
     int new_qty_files = atoi(esp_http_buffer);
 
     char total_qty_files[5];
@@ -463,6 +452,10 @@ static void save_package_data_in_file(  char* file_name_buffer, char* file_name_
     ESP_LOGI(TAG, "- Numero de paquetes a extraer = %d\n", qty);
     int new_total = qty + start_qty;
     for (int iteration = start_qty; iteration < new_total; iteration++){
+        // For debugging
+        size_t free_heap = esp_get_free_heap_size();
+        ESP_LOGE(TAG_SD, "Espacio libre  = %d\n", free_heap);
+
         led_set(CHECK, BLUE);
         http_get_data(url_to_get, esp_http_buffer, MAX_HTTP_OUTPUT_BUFFER);
         sprintf(file_name_buffer, "%s%d.txt", file_name_prefix, iteration);
@@ -488,6 +481,8 @@ void app_main(void)
         ESP_ERROR_CHECK(nvs_flash_erase());
         ret = nvs_flash_init();
     }
+    ESP_ERROR_CHECK(ret);
+    
     config_pin();
     ADC_Channel_configure(BAT_ADC_CHANNEL);
 
@@ -496,7 +491,7 @@ void app_main(void)
     esp_log_level_set("wifi", ESP_LOG_WARN);
     esp_log_level_set("phy_init", ESP_LOG_WARN);    
     
-    ESP_ERROR_CHECK(ret);
+    
     ESP_LOGI(TAG, "Inicializamos el programa prinicpal\n");
 
     /* Intentamos conectarnos a un ACCESS POINT y mostramos el IP obtenido */

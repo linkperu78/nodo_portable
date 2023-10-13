@@ -16,8 +16,8 @@
 
 /* EDGE BOX ENDPOINTS */
 
-#define edge_server         "10.42.0.1:5000"
-//#define edge_server         "192.168.18.196:5000"
+//#define edge_server         "10.42.0.1:5000"
+#define edge_server         "192.168.153.31:5000"
 
 #define edge_salud_data     "/salud/datos"
 #define edge_salud_size     "/salud/size"

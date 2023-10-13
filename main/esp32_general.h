@@ -5,13 +5,16 @@
 #include <string.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <time.h>
+#include <ctype.h>
 #include <stdlib.h>
 #include <sys/time.h>
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "soc/soc_caps.h"
-#include "esp_log.h"
+#include "nvs_flash.h"          // For NVS (Non-volatile storage) - keep your data in shutdown
+#include "esp_log.h"            // 
 
 #include "driver/gpio.h"
 #include "driver/uart.h"
@@ -22,7 +25,7 @@
 
 
 
-#define TIME_TO_SLEEP   10
+#define TIME_TO_SLEEP   3
 #define S_TO_US         1000000
 #define MIN_TO_S        60
 

@@ -1,5 +1,6 @@
 #include "esp32_sd.h"
 
+
 esp_err_t init_SD(sdmmc_card_t **out_card, sdmmc_host_t *out_host) {
     esp_err_t ret_sd;
 
@@ -63,6 +64,7 @@ esp_err_t init_SD(sdmmc_card_t **out_card, sdmmc_host_t *out_host) {
 
     return ESP_OK;
 }
+
 
 
 void eject_SD(sdmmc_card_t *card, sdmmc_host_t *host) {
