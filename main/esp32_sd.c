@@ -1,5 +1,5 @@
 #include "esp32_sd.h"
-
+#include "credenciales.h"
 
 esp_err_t init_SD(sdmmc_card_t **out_card, sdmmc_host_t *out_host) {
     esp_err_t ret_sd;
@@ -66,70 +66,37 @@ esp_err_t init_SD(sdmmc_card_t **out_card, sdmmc_host_t *out_host) {
 }
 
 
-
-void eject_SD(sdmmc_card_t *card, sdmmc_host_t *host) {
+esp_err_t eject_SD(sdmmc_card_t *card, sdmmc_host_t *host) {
     const char mount_point[] = MOUNT_POINT;
 
-    // All done, unmount partition and disable SPI peripheral
-    esp_vfs_fat_sdcard_unmount(mount_point, card);
-    ESP_LOGI(TAG_SD, "Card unmounted");
-
-    // Get the host from the card and deinitialize the bus after all devices are removed
-    spi_bus_free(host->slot);
-}
-
-bool file_exists(const char* file_path){
-    return (access(file_path, F_OK) == 0);
-}
-
-esp_err_t update_battery_file(char* localtime, float battery_level) {
-    // Nombre del archivo donde se va a guardar el nuevo dato
-    char new_file_name[30];
-    sprintf(new_file_name, "/sdcard/bateria.txt");
-    char battery_buffer[150];
-
-    // Le damos el formato para almacenarlo en bateria.txt
-    sprintf(battery_buffer, "{\"Valor\":\"%.2f\",\"Identificador\":\"Voltaje\",\"Fecha\":\"%s\"}",
-            battery_level, localtime);
-    ESP_LOGI("SD_CARD", "New batterry entry = %s\n", battery_buffer);
-
-    // Evaluamos la cantidad de datos en el contenido
-    if(file_exists(new_file_name)){
-        // File exists
-        FILE* f = fopen(new_file_name, "r+");
-        ESP_LOGI("SD_CARD", "Ingresando nuevo valor\n");
-        fseek(f, -2, SEEK_END);
-        ftruncate(fileno(f), ftell(f));
-        fprintf(f,",");
-        fprintf(f, "%s", battery_buffer);
-        fprintf(f,"]}");
-        fclose(f);
+    esp_err_t unmount_result = esp_vfs_fat_sdcard_unmount(mount_point, card);
+    if (unmount_result != ESP_OK) {
+        ESP_LOGE(TAG_SD, "Failed to unmount SD card");
+        return unmount_result; // Return ESP_ERR with the specific error code
     }
-    else{
-        uint8_t base_mac[6];
-        esp_wifi_get_mac(ESP_IF_WIFI_STA, base_mac);
-        char macId[20];
-        uint8_t index = 0;
-        for(uint8_t i=0; i<6; i++){
-            index += sprintf(&macId[index], "%02x", base_mac[i]);
-        }
-        int id_empresa = 1;
-        char cargadora[9] = "EQP44";
-        char prefix_battery_file[250];
-        sprintf(prefix_battery_file, "{\"idEmpresa\":%d,\"idDispositivo\":\"%s\",\"Cargadora\":\"%s\",\"registro\":[%s]}", 
-                id_empresa, macId, cargadora, battery_buffer);
-        ESP_LOGE("SD_CARD", "NEW FILE = %s\n", prefix_battery_file);
-        FILE* f = fopen(new_file_name, "a");
-        fprintf(f, "%s", prefix_battery_file);
-        fclose(f);
+
+    // Deinitialize the bus after all devices are removed
+    esp_err_t bus_free_result = spi_bus_free(host->slot);
+    if (bus_free_result != ESP_OK) {
+        ESP_LOGE(TAG_SD, "Failed to free SPI bus");
+        return bus_free_result; // Return ESP_ERR with the specific error code
     }
-    return ESP_OK;
+    
+    return ESP_OK; // Return ESP_OK when everything is successful
 }
+
+
+int file_exists(const char* file_name){
+    char file_path[50];
+    sprintf(file_path, "%s/%s", MOUNT_POINT, file_name);
+    return (access(file_path, F_OK) == 0 ? 1 : 0);
+}
+
 
 
 esp_err_t guardar_file_sd(char* buffer, char* name_file){
     char new_file_name[50];
-    sprintf(new_file_name, "%s%s",MOUNT_POINT, name_file);
+    sprintf(new_file_name, "%s/%s",MOUNT_POINT, name_file);
     FILE* f = fopen(new_file_name, "w");
     if (f == NULL) {
         ESP_LOGE(TAG_SD, "No se pudo escribir el archivo: %s\n", name_file);
@@ -160,7 +127,8 @@ esp_err_t append_file_sd(char* buffer, char* name_file){
 size_t leer_file_sd(const char *name_file, char* buffer_read, size_t size_buffer)
 {
     char new_file_name[50];
-    sprintf(new_file_name, "%s%s",MOUNT_POINT, name_file);
+    memset(buffer_read, 0, size_buffer);
+    sprintf(new_file_name, "%s/%s",MOUNT_POINT, name_file);
 
     ESP_LOGI(TAG_SD, "Reading file %s", name_file);
     FILE* f = fopen(new_file_name, "r");
@@ -212,17 +180,25 @@ esp_err_t delete_file_sd(const char *name_file) {
 }
 
 
-esp_err_t create_file(const char *name_file){
+// This function create a new file with initial content
+// WARNING: name_file can NOT exceed 8 characters
+esp_err_t create_file(const char *name_file, const char* initial_content){
     char file_path[50];
-    sprintf(file_path, "%s%s", MOUNT_POINT, name_file);
+    sprintf(file_path, "%s/%s", MOUNT_POINT, name_file);
 
-    ESP_LOGE("SD_CARD", "Creating the folder: %s\n", name_file);
-    FILE* f = fopen(name_file, "w");
+    ESP_LOGI(TAG_SD, "Creating the folder: %s", name_file);
+
+    FILE* f = fopen(file_path, "w");
     if (f == NULL) {
-        ESP_LOGE(TAG_SD, "No se pudo crear \n");
+        ESP_LOGE(TAG_SD, "\t\tNo se pudo crear el archivo : '%s' \n", file_path);
         return ESP_FAIL;
     }
-    fprintf(f, "%s", "0");
+
+    fprintf(f, "%s", initial_content);
     fclose(f);
+    
+    ESP_LOGI(TAG_SD, "\t\t File created: '%s' \n", name_file);
     return ESP_OK;
 }
+
+

@@ -7,6 +7,10 @@
     "idf.flashType": "UART",
     "idf.portWin": "COM8",
     "files.associations": {
-        "esp32_general.h": "c"
+        "esp32_general.h": "c",
+        "stdlib.h": "c",
+        "esp32_wifi.h": "c",
+        "esp32_sd.h": "c",
+        "time.h": "c"
     }
 }

@@ -1,30 +1,31 @@
 #ifndef __GENERAL_ESP32_
 //--------------------------------------------------
-
 #define __GENERAL_ESP32_
-#include <string.h>
-#include <stdint.h>
-#include <stdio.h>
-#include <time.h>
-#include <ctype.h>
-#include <stdlib.h>
-#include <sys/time.h>
 
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
-#include "soc/soc_caps.h"
+#include <string.h>             // Functions like strcpy, strlen, strcmp, and strcat  
+#include <stdint.h>             // Defines various integer types with specific widths, such as int8_t, int16_t, int32_t, and so on. 
+#include <stdio.h>              // It includes functions for reading and writing files, console input and output, and formatting data for output. 
+#include <time.h>               // It allows you to get the current time, format time strings, calculate time differences, and perform various time-related operations.
+#include <ctype.h>              // It includes functions like isalpha, isdigit, islower, toupper, and tolower for character classification and manipulation.
+#include <stdlib.h>             // Includes functions for memory allocation and manipulation. Functions like malloc, free, atoi, and rand 
+#include <sys/time.h>           // It includes functions for measuring time intervals and system time.
+
+#include "freertos/FreeRTOS.h"  // It provides a framework for multitasking, task scheduling, and synchronization in embedded applications.
+#include "freertos/task.h"      // Header provides functions and macros for creating, starting, and managing tasks
+#include "freertos/event_groups.h" // This library is used for creating and managing event groups.
+#include "soc/soc_caps.h"       // Allowing you to access and configure specific hardware features and functionality of the ESP32.
 #include "nvs_flash.h"          // For NVS (Non-volatile storage) - keep your data in shutdown
-#include "esp_log.h"            // 
+#include "esp_log.h"            // For logs functions like ESP_LOGE, LOGI, etc
+#include "esp_system.h"         // Includes functions for system initialization, rebooting, and retrieving system information
 
-#include "driver/gpio.h"
-#include "driver/uart.h"
-#include "esp_sleep.h"
+#include "driver/gpio.h"        // Can set up and control GPIO pins, configure input or output modes, set pin levels, and more.
+#include "driver/uart.h"        // Allows you to configure and use UART peripherals on the ESP32, send and receive data over UART
+#include "esp_sleep.h"          // It allows you to put the ESP32 into deep sleep or other low-power modes to save power when the device is idle.
 
-#include "driver/adc.h"
-//#include "esp_adc_cal.h"
-
+#include "driver/adc.h"         // U can access the functions and features provided by this library to work with the ADC of the ESP32 microcontroller.
 
 
+// For Deep Sleep Mode
 #define TIME_TO_SLEEP   3
 #define S_TO_US         1000000
 #define MIN_TO_S        60
@@ -39,8 +40,11 @@
 #define ESP_LED_CHECK_R     4
 #define ESP_LED_CHECK_G     2
 #define ESP_LED_CHECK_B     15
+
+// SD Card Slot
 #define PinSD               33
 
+// ADC for battery
 #define BAT_ADC_CHANNEL     ADC1_CHANNEL_4
 
 // SALUD_MODE = 0, PESAJE_MODE = 1, 
@@ -66,14 +70,13 @@ enum _led{
 /**
  * @brief This function introduces a delay of the desired duration in milliseconds.
  * @param time_in_ms The time to wait in milliseconds.
- */
-/**
  * @note Example Usage:
  * @code
  * delay_ms(2570); // Delays execution for 2.57 seconds.
  * @endcode
  */
 void delay_ms(int time_in_ms);
+
 
 /**
  * @brief This functions turn on GPIO pin of ESP32
@@ -137,11 +140,8 @@ float adc_get_value(int adc_channel);
 
 
 /**
- * @brief This functions show the free space in bytes size and percentage
+ * @brief This function print a string in its bytes format
  */
-void log_free_space_esp32();
-
-
 void print_bytes(const char* string_to_display, size_t size_string);
 
 //--------------------------------------------------

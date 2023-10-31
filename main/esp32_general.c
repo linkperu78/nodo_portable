@@ -94,7 +94,6 @@ void sleep_ESP32(int _time_to_sleep){
   esp_sleep_enable_timer_wakeup(time_to_sleep);
   esp_deep_sleep_start();
 	delay_ms(100);
-
 }
 
 
@@ -170,15 +169,8 @@ void led_set(enum _led pin_led, enum _color color){
       deactivate_pin(pin_B);
       break;
   }
-  delay_ms(200);
-}
 
-
-void log_free_space_esp32(){
-  uint32_t free_heap_size = esp_get_free_heap_size();
-  uint32_t total_heap_size = esp_get_minimum_free_heap_size() + free_heap_size;
-  float percent_free = ((float)free_heap_size / total_heap_size) * 100.0;
-  ESP_LOGI("DEBUG MODE", "[APP] Free memory: %lu bytes (%.2f%% free)", free_heap_size, percent_free);
+  delay_ms(100);
 }
 
 
@@ -201,6 +193,7 @@ float adc_get_value(int adc_channel){
   float raw_volt = (float) value_bat/ repeat;
   return (raw_volt*_factor + _offset) / 620.61;
 }
+
 
 void print_bytes(const char* string_to_display, size_t size_string){
   int i =0;
