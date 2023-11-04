@@ -166,7 +166,7 @@ size_t leer_file_sd(const char *name_file, char* buffer_read, size_t size_buffer
 
 esp_err_t delete_file_sd(const char *name_file) {
     char file_path[50];
-    sprintf(file_path, "%s%s", MOUNT_POINT, name_file);
+    sprintf(file_path, "%s/%s", MOUNT_POINT, name_file);
 
     // Use the remove() function to delete the file
     int result = remove(file_path);
