@@ -49,8 +49,6 @@ int http_post_data(  char* url_path_post, char* data_to_send, size_t data_to_sen
 void get_request(esp_http_client_handle_t client, char *response_buffer, size_t buffer_size);
 
 
-int post_request(esp_http_client_handle_t client, const char *message_buffer, size_t message_size);
-
 
 // ----------------------------------------------------------------- //
 #endif

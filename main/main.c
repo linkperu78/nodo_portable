@@ -115,6 +115,7 @@ void app_main(void)
     ESP_LOGI(TAG, "Valor leido de bateria = %.2f\n", battery_value);
     update_led_battery();
     
+    //sleep_ESP32(TIME_TO_SLEEP);
 
     ESP_LOGI(TAG, "Inicializamos el programa prinicpal\n");
 
@@ -294,6 +295,9 @@ void app_main(void)
         // Obtenemos la cantidad de datos nuevos
         qty_files = atoi(buffer_sd_qty);
 
+        ESP_LOGI(TAG, "Se encontraron:\n\t- Archivos salud: %d\n\t- Archivos error_salud: %d\n",
+                    qty_files, qty_err_files);
+
         //  ------------------ CST SERVER ---------------------------
         // Iniciamos el cliente
         sprintf(buffer_url, "%s%s", cst_server, cst_salud);
@@ -312,14 +316,17 @@ void app_main(void)
 
         for(int n = 0; n < qty_err_files; n++){
             // Leemos el archivo a enviar
+            led_set(CHECK, BLUE);
             sprintf(buffer_file_name,"%s%d.txt", file_err_salud_dat, n);
             if (file_exists(buffer_file_name) == 0){
+                //led_set(CHECK, WHITE);
                 continue;
             }
             memset(buffer_http_response, 0, sizeof(buffer_http_response));
             check_sd_length = leer_file_sd(buffer_file_name, buffer_http_response, sizeof(buffer_http_response));
             if (check_sd_length < 1){
                 delete_file_sd(buffer_file_name);
+                //led_set(CHECK, WHITE);
                 continue;
             }
 
@@ -329,23 +336,28 @@ void app_main(void)
             ret = esp_http_client_perform(client);
             resultado = esp_http_client_get_status_code(client);
             if(ret == ESP_OK && resultado == 200){
+                led_set(CHECK, GREEN);
                 ESP_LOGI(TAG, " \t- El archivo %s se envio correctamente\n", buffer_file_name);
             }
             else{
+                led_set(CHECK, RED);
                 ESP_LOGE(TAG, " \t- Fallo al enviar el archivo %s\n", buffer_file_name);
             }
         }
 
         for(int n = 0; n < qty_files; n++){
             // Leemos el archivo a enviar
+            led_set(CHECK, BLUE);
             sprintf(buffer_file_name,"%s%d.txt", file_salud_data, n);
             if (file_exists(buffer_file_name) == 0){
+                //led_set(CHECK, WHITE);
                 continue;
             }
             memset(buffer_http_response, 0, sizeof(buffer_http_response));
             check_sd_length = leer_file_sd(buffer_file_name, buffer_http_response, sizeof(buffer_http_response));
             if (check_sd_length < 1){
                 delete_file_sd(buffer_file_name);
+                //led_set(CHECK, OFF);
                 continue;
             }
             // Intentamos enviar datos hacia el servidor
@@ -354,9 +366,11 @@ void app_main(void)
             ret = esp_http_client_perform(client);
             resultado = esp_http_client_get_status_code(client);
             if(ret == ESP_OK && resultado == 200){
+                led_set(CHECK, GREEN);
                 ESP_LOGI(TAG, " \t- El archivo %s se envio correctamente\n", buffer_file_name);
             }
             else{
+                led_set(CHECK, RED);
                 ESP_LOGE(TAG, " \t- Fallo al enviar el archivo %s\n", buffer_file_name);
             }
         }
@@ -380,6 +394,7 @@ void app_main(void)
 
         for(int n = 0; n < qty_err_files; n++){
             // Leemos el archivo a enviar
+            led_set(CHECK, BLUE);
             sprintf(buffer_file_name,"%s%d.txt", file_err_salud_dat, n);
             if (file_exists(buffer_file_name) == 0){
                 continue;
@@ -393,10 +408,12 @@ void app_main(void)
             ret = esp_http_client_perform(client);
             resultado = esp_http_client_get_status_code(client);
             if(ret == ESP_OK && resultado == 200){
+                led_set(CHECK, GREEN);
                 ESP_LOGI(TAG, " \t- El archivo %s se envio correctamente\n", buffer_file_name);
                 delete_file_sd(buffer_file_name);
             }
             else{
+                led_set(CHECK, RED);
                 ESP_LOGE(TAG, " \t- Fallo al enviar el archivo %s\n", buffer_file_name);
                 sprintf(buffer_file_name, "%s%d.txt", file_err_salud_dat, actual_failed_files);
                 ESP_LOGI(TAG, " \t\t- Creando el archivo %s\n", buffer_file_name);
@@ -406,6 +423,7 @@ void app_main(void)
         }
 
         for(int n = 0; n < qty_files; n++){
+            led_set(CHECK, BLUE);
             // Leemos el archivo a enviar
             sprintf(buffer_file_name,"%s%d.txt", file_salud_data, n);
             if (file_exists(buffer_file_name) == 0){
@@ -420,10 +438,12 @@ void app_main(void)
             ret = esp_http_client_perform(client);
             resultado = esp_http_client_get_status_code(client);
             if(ret == ESP_OK && resultado == 200){
+                led_set(CHECK, GREEN);
                 ESP_LOGI(TAG, " \t- El archivo %s se envio correctamente\n", buffer_file_name);
                 delete_file_sd(buffer_file_name);
             }
             else{
+                led_set(CHECK, RED);
                 ESP_LOGE(TAG, " \t- Fallo al enviar el archivo %s\n", buffer_file_name);
                 sprintf(buffer_file_name, "%s%d.txt", file_err_salud_dat, actual_failed_files);
                 ESP_LOGI(TAG, " \t\t- Creando el archivo %s\n", buffer_file_name);

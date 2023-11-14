@@ -26,7 +26,7 @@
 
 
 // For Deep Sleep Mode
-#define TIME_TO_SLEEP   30
+#define TIME_TO_SLEEP   10
 #define S_TO_US         1000000
 #define MIN_TO_S        60
 

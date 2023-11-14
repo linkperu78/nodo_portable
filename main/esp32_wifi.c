@@ -315,18 +315,4 @@ void get_request(esp_http_client_handle_t client, char *response_buffer, size_t 
 }
 
 
-int post_request(esp_http_client_handle_t client, const char *message_buffer, size_t message_size){
-    esp_http_client_set_post_field(client, message_buffer, message_size);
-    esp_err_t ret = esp_http_client_perform(client);
-    int code = esp_http_client_get_status_code(client);
 
-    if (ret == ESP_OK) {
-        ESP_LOGI(my_tag, "HTTP POST Status = %d, content_length = %"PRId64,
-                code,
-                esp_http_client_get_content_length(client));
-        return code;
-    } else {
-        ESP_LOGE(my_tag, "HTTP POST request failed: %s", esp_err_to_name(ret));
-    }
-    return 0;
-}
